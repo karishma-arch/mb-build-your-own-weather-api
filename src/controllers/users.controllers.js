@@ -229,10 +229,26 @@ const editUser = async (req, res) => {
 
 
 
+const createLocation = async (req, res) => {
+  const { location, title } = req.body;
 
-const location = async(req,res)=>{
+  const userId = req.user.id;
 
-}
+  const newLocation = await db
+    .insert(locationTable)
+    .values({
+      userId,
+      location,
+      title,
+    })
+    .returning();
+
+  return res.status(201).json({
+    status: 201,
+    message: "Location created successfully",
+    data: newLocation[0],
+  });
+};
 export {
-    register,login,getme,logout,forgotPassword,verifyOtp,resetPassword,editUser
+    register,login,getme,logout,forgotPassword,verifyOtp,resetPassword,editUser,createLocation
 }

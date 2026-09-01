@@ -3,7 +3,7 @@ import { register,
     login, getme ,
     logout,forgotPassword,
     verifyOtp,resetPassword,
-editUser} from "../controllers/users.controllers.js";
+editUser,createLocation} from "../controllers/users.controllers.js";
 import auth from "../middleware/user.js";
 
 const router = Router();
@@ -18,5 +18,5 @@ router.post("/forgot-password",forgotPassword)
 router.post("/verifyOtp",verifyOtp)
 router.post("/resetPassword",resetPassword)
 router.put("/editUser/:id",auth,editUser)
-router.post("/api/locations",auth,locations)
+router.post("/api/locations",auth,createLocation)
 export default router;

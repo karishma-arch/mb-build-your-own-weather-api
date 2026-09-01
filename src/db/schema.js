@@ -29,12 +29,12 @@ export const passwordResetTable = pgTable("password_reset",{
 
 
 export const locationTable = pgTable("location_Table",{
-id:serial({length:255}),
+id:serial("id").primaryKey(),
 userId:integer("user_id").notNull().references(()=>usersTable.id),
 location:text("location").notNull(),
 title:varchar("title",{length:255}).notNull(),
 createdAt:timestamp("created_at")
-.defaultNow().$default.notNull()
+.defaultNow()
 }
 
 )
