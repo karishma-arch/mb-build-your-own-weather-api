@@ -249,6 +249,32 @@ const createLocation = async (req, res) => {
     data: newLocation[0],
   });
 };
+const getlocation = async (req, res) => {
+  const { page, size } = req.query;
+
+  if (page === undefined || size === undefined) {
+    return res.status(400).json({
+      status: 400,
+      message: "Page and size are required",
+    });
+  }
+
+  const userId = req.user.id;
+
+  const locations = await db
+    .select()
+    .from(locationTable)
+    .where(eq(locationTable.userId, userId))
+    .limit(Number(size))
+    .offset(Number(page) * Number(size));
+
+  return res.status(200).json({
+    status: 200,
+    message: "Retrieved all saved locations successfully",
+    data: locations,
+  });
+};
+
 export {
-    register,login,getme,logout,forgotPassword,verifyOtp,resetPassword,editUser,createLocation
+    register,login,getme,logout,forgotPassword,verifyOtp,resetPassword,editUser,createLocation,getlocation
 }
