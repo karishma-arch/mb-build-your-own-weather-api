@@ -4,7 +4,8 @@ import { register,
     logout,forgotPassword,
     verifyOtp,resetPassword,
 editUser,createLocation,
-getlocation} from "../controllers/users.controllers.js";
+getlocation,
+deleteLocations,getWeather} from "../controllers/users.controllers.js";
 import auth from "../middleware/user.js";
 
 const router = Router();
@@ -19,6 +20,8 @@ router.post("/forgot-password",forgotPassword)
 router.post("/verifyOtp",verifyOtp)
 router.post("/resetPassword",resetPassword)
 router.put("/editUser/:id",auth,editUser)
-router.post("/api/locations",auth,createLocation)
-router.get("/api/getlocation",getlocation)
+router.post("/locations",auth,createLocation)
+router.get("/getlocation",auth,getlocation)
+router.delete("/locations/:id",auth,deleteLocations)
+router.get("/locations/:id/weather", auth, getWeather);
 export default router;

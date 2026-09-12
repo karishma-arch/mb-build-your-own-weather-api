@@ -1,5 +1,5 @@
 import { usersTable,passwordResetTable ,locationTable} from "../db/schema.js";
-import {eq} from 'drizzle-orm'
+import {eq,and} from 'drizzle-orm'
 import {db} from '../app.js'
 import bcrypt from 'bcrypt'
 import { generateToken,verifyToken } from "../utils/jwt.js";
@@ -275,6 +275,85 @@ const getlocation = async (req, res) => {
   });
 };
 
+const deleteLocations=async(req,res)=>{
+  try{
+    const {id}=req.params
+  if(!id){
+    return res.status(400).json({
+      message:"Please send valid id first"
+    })
+  }
+
+  const [deletedLocation]=await db.delete().from(locationTable)
+  .where(
+    and(
+      eq(locationTable.userId,req.user.id),
+      eq(locationTable.id,req.params.id)
+    )
+  ).returning();
+  
+  if(!deletedLocation){
+    return res.status(404).json({
+      status:404,
+      message:"Location not found or unauthorized"
+    })
+  }
+  return res.status(200).json({
+    "status": 200,
+    "message": "Location deleted successfully",
+   deletedLocation
+  })
+}catch(error){
+  return res.status(500).json({
+    status:500,
+    message:"Internal server error"
+  })
+}
+}
+
+
+const getWeather=async(req,res)=>{
+const {id}=req.params
+
+const [location] = await db
+  .select()
+  .from(locationTable)
+  .where(
+    and(
+      eq(locationTable.userId,req.user.id),
+      eq(locationTable.id,id)
+    )
+  )
+  
+
+if (!location) {
+  return res.status(400).json({
+    message: "Location not found",
+  });
+}
+
+const response = await fetch(
+  `https://api.openweathermap.org/data/2.5/weather?q=${location.location}&appid=${process.env.OPENWEATHER_API_KEY}`
+);
+
+if(!response.ok){
+  return res.status(400).json({
+    message:"Unable to fetch weather"
+  })
+}
+const data = await response.json()
+
+return res.status(200).json({
+  status: 200,
+  message:
+    "Retrieved current weather by location successfully using OpenWeather API",
+  data: data,
+});
+}
+
+
+
+
 export {
-    register,login,getme,logout,forgotPassword,verifyOtp,resetPassword,editUser,createLocation,getlocation
+    register,login,getme,logout,forgotPassword,verifyOtp,resetPassword,editUser,createLocation,getlocation,deleteLocations,getWeather
 }
