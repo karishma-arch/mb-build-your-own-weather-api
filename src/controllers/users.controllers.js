@@ -1,157 +1,165 @@
-import { usersTable,passwordResetTable ,locationTable} from "../db/schema.js";
-import {eq,and} from 'drizzle-orm'
-import {db} from '../app.js'
-import bcrypt from 'bcrypt'
-import { generateToken,verifyToken } from "../utils/jwt.js";
+import { usersTable, passwordResetTable, locationTable } from "../db/schema.js";
+import { eq, and } from "drizzle-orm";
+import { db } from "../app.js";
+import bcrypt from "bcrypt";
+import { generateToken, verifyToken } from "../utils/jwt.js";
 import config from "../config/config.js";
 import crypto from "crypto";
 
-const register=async(req,res)=>{
-    const {name,email,password}=req.body
+const register = async (req, res) => {
+  const { name, email, password } = req.body;
 
-    const [existingUser]=await db.select().from(usersTable)
-    .where(eq(usersTable.email,email))
+  const [existingUser] = await db
+    .select()
+    .from(usersTable)
+    .where(eq(usersTable.email, email));
 
-    if(existingUser){
-        return res.status(400).json({error:"Email already exists"})
-    }
+  if (existingUser) {
+    return res.status(400).json({ error: "Email already exists" });
+  }
 
-    const hashPassword= await bcrypt.hash(password,10)
+  const hashPassword = await bcrypt.hash(password, 10);
 
-    const [user]=await db.insert(usersTable)
-    .values({name,email,password:hashPassword}).returning()
+  const [user] = await db
+    .insert(usersTable)
+    .values({ name, email, password: hashPassword })
+    .returning();
 
-    const { password: _, ...userWithoutPassword } = user;
+  const { password: _, ...userWithoutPassword } = user;
 
-    res.status(201).json({
-    "status": 201,
-    "message": "User registered successfully",
-    user:userWithoutPassword
-  })
-}
+  res.status(201).json({
+    status: 201,
+    message: "User registered successfully",
+    user: userWithoutPassword,
+  });
+};
 
-const login = async(req,res)=>{
-    const {email,password}=req.body
+const login = async (req, res) => {
+  const { email, password } = req.body;
 
-    const [user]=await db.select().from(usersTable)
-    .where(eq(usersTable.email,email))
+  const [user] = await db
+    .select()
+    .from(usersTable)
+    .where(eq(usersTable.email, email));
 
-
-if(!user){
+  if (!user) {
     return res.status(404).json({
-        message:"user not found"
-    })
-}
+      message: "user not found",
+    });
+  }
 
-const isMatch=await bcrypt.compare(password,user.password)
+  const isMatch = await bcrypt.compare(password, user.password);
 
-if(!isMatch){
+  if (!isMatch) {
     return res.status(401).json({
-        message:"Invalid password"
-    })
-}
+      message: "Invalid password",
+    });
+  }
 
-const token = generateToken({
-    id:user.id,
-    email:user.email,
-})
-res.json({
-    message:"Login successful",
-    token
-    
-})
+  const token = generateToken({
+    id: user.id,
+    email: user.email,
+  });
+  res.json({
+    message: "Login successful",
+    token,
+  });
+};
 
-}
+const forgotPassword = async (req, res) => {
+  const { email } = req.body;
 
+  const [user] = await db
+    .select()
+    .from(usersTable)
+    .where(eq(usersTable.email, email));
 
-const forgotPassword=async(req,res)=>{
-const {email}=req.body;
-
-const [user]=await db.select().from(usersTable).where(eq(usersTable.email,email))
-
-if(!user){
+  if (!user) {
     return res.status(400).json({
-        message:"User with this email doesn't exist"
-    })
-}
-const otp= crypto.randomInt(100000,1000000).toString();
-console.log("otp",otp)
+      message: "User with this email doesn't exist",
+    });
+  }
+  const otp = crypto.randomInt(100000, 1000000).toString();
+  console.log("otp", otp);
 
-const expiresAt = new Date(Date.now() + 5 * 60 * 1000);
+  const expiresAt = new Date(Date.now() + 5 * 60 * 1000);
 
-await db.insert(passwordResetTable).values({
-    userId:user.id,
+  await db.insert(passwordResetTable).values({
+    userId: user.id,
     otp,
-    expiresAt
-})
+    expiresAt,
+  });
 
-return res.status(200).json({
-    message:"OTP generated successfully"
-})
+  return res.status(200).json({
+    message: "OTP generated successfully",
+  });
+};
 
-}
+const verifyOtp = async (req, res) => {
+  const { email, otp } = req.body;
 
+  const [user] = await db
+    .select()
+    .from(usersTable)
+    .where(eq(usersTable.email, email));
 
-const verifyOtp=async(req,res)=>{
-    const {email,otp}=req.body
-
-    const [user]=await db.select().from(usersTable).where(eq(usersTable.email,email));
-
-if(!user){
+  if (!user) {
     return res.status(400).json({
-        message:"User not found"
-    })
-}
+      message: "User not found",
+    });
+  }
 
-const [data]=await db.select().from(passwordResetTable).where(eq(passwordResetTable.userId,user.id))
-if(!data){
+  const [data] = await db
+    .select()
+    .from(passwordResetTable)
+    .where(eq(passwordResetTable.userId, user.id));
+  if (!data) {
     return res.status(400).json({
-        message:"OTP not found"
-    })
-}
-if(data.otp !==otp){
+      message: "OTP not found",
+    });
+  }
+  if (data.otp !== otp) {
     return res.status(400).json({
-        message:"Invalid OTP"
-    })
-}
+      message: "Invalid OTP",
+    });
+  }
 
-if(new Date()>data.expiresAt){
+  if (new Date() > data.expiresAt) {
     return res.status(400).json({
-        message:"OTP expired"
-    })
-}
-return res.status(200).json({
-    message:"OTP verified successfully"
-})
-}
+      message: "OTP expired",
+    });
+  }
+  return res.status(200).json({
+    message: "OTP verified successfully",
+  });
+};
 
-const resetPassword=async(req,res)=>{
-    const {email,password}=req.body
+const resetPassword = async (req, res) => {
+  const { email, password } = req.body;
 
-    const [user] = await db
-      .select()
-      .from(usersTable)
-      .where(eq(usersTable.email, email));
+  const [user] = await db
+    .select()
+    .from(usersTable)
+    .where(eq(usersTable.email, email));
 
-    if (!user) {
-      return res.status(400).json({
-        status: 400,
-        message: "User not found",
-      });
-    }
+  if (!user) {
+    return res.status(400).json({
+      status: 400,
+      message: "User not found",
+    });
+  }
 
-    const hashedPassword = await bcrypt.hash(password, 10);
+  const hashedPassword = await bcrypt.hash(password, 10);
 
-    await db
+  await db
     .update(usersTable)
-    .set({password:hashedPassword})
-    .where(eq(usersTable.id,user.id))
+    .set({ password: hashedPassword })
+    .where(eq(usersTable.id, user.id));
 
-    return res.status(200).json({
-        message:"User password reset successfully"
-    })
-}
-
+  return res.status(200).json({
+    message: "User password reset successfully",
+  });
+};
 
 const logout = async (req, res) => {
   res.clearCookie("token");
@@ -227,8 +235,6 @@ const editUser = async (req, res) => {
   });
 };
 
-
-
 const createLocation = async (req, res) => {
   const { location, title } = req.body;
 
@@ -275,85 +281,175 @@ const getlocation = async (req, res) => {
   });
 };
 
-const deleteLocations=async(req,res)=>{
-  try{
-    const {id}=req.params
-  if(!id){
+const deleteLocations = async (req, res) => {
+  try {
+    const { id } = req.params;
+    if (!id) {
+      return res.status(400).json({
+        message: "Please send valid id first",
+      });
+    }
+
+    const [deletedLocation] = await db
+      .delete()
+      .from(locationTable)
+      .where(
+        and(
+          eq(locationTable.userId, req.user.id),
+          eq(locationTable.id, req.params.id),
+        ),
+      )
+      .returning();
+
+    if (!deletedLocation) {
+      return res.status(404).json({
+        status: 404,
+        message: "Location not found or unauthorized",
+      });
+    }
+    return res.status(200).json({
+      status: 200,
+      message: "Location deleted successfully",
+      deletedLocation,
+    });
+  } catch (error) {
+    return res.status(500).json({
+      status: 500,
+      message: "Internal server error",
+    });
+  }
+};
+
+const getWeather = async (req, res) => {
+  const { id } = req.params;
+
+  const [location] = await db
+    .select()
+    .from(locationTable)
+    .where(
+      and(eq(locationTable.userId, req.user.id), eq(locationTable.id, id)),
+    );
+
+  if (!location) {
     return res.status(400).json({
-      message:"Please send valid id first"
-    })
+      message: "Location not found",
+    });
   }
 
-  const [deletedLocation]=await db.delete().from(locationTable)
-  .where(
-    and(
-      eq(locationTable.userId,req.user.id),
-      eq(locationTable.id,req.params.id)
-    )
-  ).returning();
-  
-  if(!deletedLocation){
-    return res.status(404).json({
-      status:404,
-      message:"Location not found or unauthorized"
-    })
+  const response = await fetch(
+    `https://api.openweathermap.org/data/2.5/weather?q=${location.location}&appid=${process.env.OPENWEATHER_API_KEY}`,
+  );
+
+  if (!response.ok) {
+    return res.status(400).json({
+      message: "Unable to fetch weather",
+    });
   }
+  const data = await response.json();
+
   return res.status(200).json({
-    "status": 200,
-    "message": "Location deleted successfully",
-   deletedLocation
-  })
-}catch(error){
-  return res.status(500).json({
-    status:500,
-    message:"Internal server error"
-  })
-}
-}
+    status: 200,
+    message:
+      "Retrieved current weather by location successfully using OpenWeather API",
+    data: data,
+  });
+};
+const getForecast = async (req, res) => {
+  try {
+    const { id } = req.params;
+    const { duration } = req.query;
+    if (duration !== "daily") {
+      return res.status(400).json({
+        status: 400,
+        message: "Duration must be daily",
+      });
+    }
+    const [location] = await db
+      .select()
+      .from(locationTable)
+      .where(
+        and(eq(locationTable.userId, req.user.id), eq(locationTable.id, id)),
+      );
 
+    if (!location) {
+      return res.status(400).json({
+        status: 400,
+        message: "Location not found",
+      });
+    }
+    const geoResponse = await fetch(
+      `https://api.openweathermap.org/geo/1.0/direct?q=${encodeURIComponent(location.location)}
+      &limit=1&appid=${process.env.OPENWEATHER_API_KEY}`,
+      { method: "GET" },
+    );
 
-const getWeather=async(req,res)=>{
-const {id}=req.params
+    if (!geoResponse.ok) {
+      return res
+        .status(400)
+        .json({ status: 400, message: "Unable to find location coordinates" });
+    }
+    const geoData = await geoResponse.json();
+    if (!geoData.length) {
+      return res
+        .status(400)
+        .json({ 
+          status: 400, 
+          message: "Location coordinates not found" });
+    }
+    const { lat, lon } = geoData[0];
+    /*
+const forecastResponse = await fetch(
+  `https://api.openweathermap.org/data/3.0/onecall?lat=${lat}&lon=${lon}&exclude=current,minutely,hourly,alerts&appid=${process.env.OPENWEATHER_API_KEY}`,
+);*/
+const forecastResponse = await fetch(
+  `https://api.openweathermap.org/data/2.5/forecast?lat=${lat}&lon=${lon}&appid=${process.env.OPENWEATHER_API_KEY}`,
+);
+/*
+    if (!forecastResponse.ok) {
+      return res
+        .status(400)
+        .json({ status: 400, message: "Unable to fetch daily forecast" });
+    }*/
 
-const [location] = await db
-  .select()
-  .from(locationTable)
-  .where(
-    and(
-      eq(locationTable.userId,req.user.id),
-      eq(locationTable.id,id)
-    )
-  )
-  
+if (!forecastResponse.ok) {
+  const errorData = await forecastResponse.json();
 
-if (!location) {
+  console.log("OpenWeather error:", errorData);
+
   return res.status(400).json({
-    message: "Location not found",
+    status: 400,
+    message: "Unable to fetch daily forecast",
+    error: errorData,
   });
 }
 
-const response = await fetch(
-  `https://api.openweathermap.org/data/2.5/weather?q=${location.location}&appid=${process.env.OPENWEATHER_API_KEY}`
-);
-
-if(!response.ok){
-  return res.status(400).json({
-    message:"Unable to fetch weather"
-  })
-}
-const data = await response.json()
-
-return res.status(200).json({
-  status: 200,
-  message:
-    "Retrieved current weather by location successfully using OpenWeather API",
-  data: data,
-});
-}
-
-
-
+    const forecastData = await forecastResponse.json();
+    return res.status(200).json({
+      status: 200,
+      message:
+        "Retrieved daily forecast by location successfully using OpenWeather API",
+      data: forecastData,
+    });
+  } catch (error) {
+    console.error(error);
+    return res
+      .status(500)
+      .json({ status: 500, message: "Something went wrong" });
+  }
+};
 
 export {
-    register,login,getme,logout,forgotPassword,verifyOtp,resetPassword,editUser,createLocation,getlocation,deleteLocations,getWeather
-}
+  register,
+  login,
+  getme,
+  logout,
+  forgotPassword,
+  verifyOtp,
+  resetPassword,
+  editUser,
+  createLocation,
+  getlocation,
+  deleteLocations,
+  getWeather,
+  getForecast
+};
