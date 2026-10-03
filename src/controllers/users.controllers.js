@@ -438,6 +438,100 @@ if (!forecastResponse.ok) {
   }
 };
 
+const getHourlyForecast = async (req, res) => {
+  try {
+    const { id } = req.params;
+    const { duration } = req.query;
+
+    // Check duration
+    if (duration !== "hourly") {
+      return res.status(400).json({
+        status: 400,
+        message: "Duration must be hourly",
+      });
+    }
+
+    // Find location for logged-in user
+    const [location] = await db
+      .select()
+      .from(locationTable)
+      .where(
+        and(eq(locationTable.userId, req.user.id), eq(locationTable.id, id)),
+      );
+
+    if (!location) {
+      return res.status(400).json({
+        status: 400,
+        message: "Location not found",
+      });
+    }
+
+    // Get latitude and longitude
+    const geoResponse = await fetch(
+      `https://api.openweathermap.org/geo/1.0/direct?q=${encodeURIComponent(
+        location.location,
+      )}&limit=1&appid=${process.env.OPENWEATHER_API_KEY}`,
+      {
+        method: "GET",
+      },
+    );
+
+    if (!geoResponse.ok) {
+      return res.status(400).json({
+        status: 400,
+        message: "Unable to find location coordinates",
+      });
+    }
+
+    const geoData = await geoResponse.json();
+
+    if (!geoData.length) {
+      return res.status(400).json({
+        status: 400,
+        message: "Location coordinates not found",
+      });
+    }
+
+    const { lat, lon } = geoData[0];
+
+    // Get hourly forecast
+    const forecastResponse = await fetch(
+      `https://api.openweathermap.org/data/3.0/onecall?lat=${lat}&lon=${lon}&appid=${process.env.OPENWEATHER_API_KEY}&units=metric`,
+      {
+        method: "GET",
+      },
+    );
+
+    if (!forecastResponse.ok) {
+      const errorData = await forecastResponse.json();
+
+      console.log("OpenWeather error:", errorData);
+
+      return res.status(400).json({
+        status: 400,
+        message: "Unable to fetch hourly forecast",
+        error: errorData,
+      });
+    }
+
+    const forecastData = await forecastResponse.json();
+
+    return res.status(201).json({
+      status: 201,
+      message:
+        "Retrieved hourly forecast by location successfully using OpenWeather API",
+      data: forecastData,
+    });
+  } catch (error) {
+    console.error(error);
+
+    return res.status(500).json({
+      status: 500,
+      message: "Something went wrong",
+    });
+  }
+};
+
 export {
   register,
   login,
@@ -451,5 +545,6 @@ export {
   getlocation,
   deleteLocations,
   getWeather,
-  getForecast
+  getForecast,
+  getHourlyForecast,
 };
