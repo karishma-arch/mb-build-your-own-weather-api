@@ -532,6 +532,91 @@ const getHourlyForecast = async (req, res) => {
   }
 };
 
+const getWeatherAlerts = async (req, res) => {
+  try {
+    const { id } = req.params;
+
+  // Find location for logged-in user
+    const [location] = await db
+      .select()
+      .from(locationTable)
+      .where(
+        and(eq(locationTable.userId, req.user.id), eq(locationTable.id, id)),
+      );
+
+    if (!location) {
+      return res.status(400).json({
+        status: 400,
+        message: "Location not found",
+      });
+    }
+
+    // Get latitude and longitude
+    const geoResponse = await fetch(
+      `https://api.openweathermap.org/geo/1.0/direct?q=${encodeURIComponent(
+        location.location,
+      )}&limit=1&appid=${process.env.OPENWEATHER_API_KEY}`,
+      {
+        method: "GET",
+      },
+    );
+
+    if (!geoResponse.ok) {
+      return res.status(400).json({
+        status: 400,
+        message: "Unable to find location coordinates",
+      });
+    }
+
+    const geoData = await geoResponse.json();
+
+    if (!geoData.length) {
+      return res.status(400).json({
+        status: 400,
+        message: "Location coordinates not found",
+      });
+    }
+
+    const { lat, lon } = geoData[0];
+
+    // Get weather alerts
+    const alertResponse = await fetch(
+      `https://api.openweathermap.org/data/3.0/onecall?lat=${lat}&lon=${lon}&appid=${process.env.OPENWEATHER_API_KEY}`,
+      {
+        method: "GET",
+      },
+    );
+
+    if (!alertResponse.ok) {
+      const errorData = await alertResponse.json();
+
+      console.log("OpenWeather error:", errorData);
+
+      return res.status(400).json({
+        status: 400,
+        message: "Unable to fetch weather alerts",
+        error: errorData,
+      });
+    }
+
+    const alertData = await alertResponse.json();
+
+    return res.status(200).json({
+      status: 200,
+      message:
+        "Retrieved weather alerts by location successfully using OpenWeather API",
+      data: alertData.alerts || [],
+    });
+  } catch (error) {
+    console.error(error);
+
+    return res.status(500).json({
+      status: 500,
+      message: "Something went wrong",
+    });
+  }
+};
+
 export {
   register,
   login,
@@ -547,4 +632,5 @@ export {
   getWeather,
   getForecast,
   getHourlyForecast,
+  getWeatherAlerts,
 };
