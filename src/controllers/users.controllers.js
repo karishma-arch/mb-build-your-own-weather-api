@@ -617,6 +617,43 @@ const getWeatherAlerts = async (req, res) => {
   }
 };
 
+const setCustomAlerts = async (req, res) => {
+  try {
+    const userId = req.user.id;
+
+    const { locationId, temperature, condition } = req.body;
+
+    if (!locationId || !temperature || !condition) {
+      return res.status(400).json({
+        status: 400,
+        message: "All alert fields are required",
+      });
+    }
+
+    const alert = await Alert.create({
+      userId,
+      locationId,
+      temperature,
+      condition,
+    });
+
+    return res.status(201).json({
+      status: 201,
+      message: "Set custom alerts successfully",
+      data: alert,
+    });
+  } catch (error) {
+    console.error(error);
+
+    return res.status(500).json({
+      status: 500,
+      message: "Something went wrong",
+    });
+  }
+};
+
+export default setCustomAlerts;
+
 export {
   register,
   login,

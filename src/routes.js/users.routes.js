@@ -13,7 +13,8 @@ import {
   deleteLocations,
   getWeather,
   getForecast,
-  getHourlyForecast
+  getHourlyForecast,
+  getWeatherAlerts,
 } from "../controllers/users.controllers.js";
 import auth from "../middleware/user.js";
 
@@ -33,4 +34,5 @@ router.delete("/locations/:id", auth, deleteLocations);
 router.get("/locations/:id/weather", auth, getWeather);
 router.get("/locations/:id/forecast",auth,getForecast);
 router.get("/location/:id/forecast",auth,getHourlyForecast)
+router.get("/locations/:id/alerts", getWeatherAlerts);
 export default router;
