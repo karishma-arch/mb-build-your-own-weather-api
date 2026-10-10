@@ -652,7 +652,56 @@ const setCustomAlerts = async (req, res) => {
   }
 };
 
-export default setCustomAlerts;
+export const setPreferredUnits = async (req, res) => {
+  try {
+   const { unit } = req.body;
+
+     if (!unit || !["c", "f"].includes(unit)) {
+      return res.status(400).json({
+        status: 400,
+        message: "Unit must be either c or f",
+      });
+    }
+
+     const userId = req.user?.id;
+
+    if (!userId) {
+      return res.status(401).json({
+        status: 401,
+        message: "Unauthorized. Please login first.",
+      });
+    }
+
+  const updatedUser = await db
+      .update(usersTable)
+      .set({ unit })
+      .where(eq(usersTable.id, userId))
+      .returning({
+        id: usersTable.id,
+        unit: usersTable.unit,
+      });
+
+    if (updatedUser.length === 0) {
+      return res.status(404).json({
+        status: 404,
+        message: "User not found",
+      });
+    }
+
+   return res.status(201).json({
+      status: 201,
+      message: "Set preferred units successfully",
+      data: {},
+    });
+  } catch (error) {
+    console.error("Set preferred units error:", error);
+
+    return res.status(500).json({
+      status: 500,
+      message: "Internal server error",
+    });
+  }
+};
 
 export {
   register,
@@ -670,4 +719,5 @@ export {
   getForecast,
   getHourlyForecast,
   getWeatherAlerts,
+  setCustomAlerts
 };

@@ -15,6 +15,7 @@ import {
   getForecast,
   getHourlyForecast,
   getWeatherAlerts,
+  setCustomAlerts,
 } from "../controllers/users.controllers.js";
 import auth from "../middleware/user.js";
 
@@ -35,4 +36,5 @@ router.get("/locations/:id/weather", auth, getWeather);
 router.get("/locations/:id/forecast",auth,getForecast);
 router.get("/location/:id/forecast",auth,getHourlyForecast)
 router.get("/locations/:id/alerts", getWeatherAlerts);
+router.post("/alerts", setCustomAlerts);
 export default router;
